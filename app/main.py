@@ -1,9 +1,9 @@
-from data_loader import load_persona
-from timeline import build_unified_timeline
-from axes import compute_axis_scores, compute_monthly_axis_scores
-from patterns import detect_momentum_collapse, detect_stress_preceded_collapse
-from insights import generate_monthly_summary
-from daily_plan_generator import generate_daily_plan
+from .data_loader import load_persona
+from .timeline import build_unified_timeline
+from .axes import compute_axis_scores, compute_monthly_axis_scores
+from .patterns import detect_momentum_collapse, detect_stress_preceded_collapse
+from .insights import generate_monthly_summary
+from .daily_plan_generator import generate_daily_plan
 
 
 def run_pipeline(persona_id: str = "p05"):

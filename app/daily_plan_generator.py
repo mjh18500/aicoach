@@ -1,8 +1,8 @@
 from typing import Dict, Any
 
-from llm_client import default_client, LLMClient
-from memory_formatter import format_memory
-from state_classifier import classify_state
+from .llm_client import default_client, LLMClient
+from .memory_formatter import format_memory
+from .state_classifier import classify_state
 
 
 DEFAULT_PROMPT_TEMPLATE = """You are a supportive personal AI companion. Use the following context about the user to craft a calm, adaptive daily plan with up to three simple tasks. The tone should be reassuring and focus on small wins.
@@ -54,7 +54,7 @@ def generate_daily_plan(persona_data: Dict[str, Any],
 if __name__ == "__main__":
     # quick test
     import json
-    from data_loader import load_persona
+    from .data_loader import load_persona
 
     persona = load_persona("p05")
     plan = generate_daily_plan(persona)

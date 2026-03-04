@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Companion — Deep Dive</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=IBM+Plex+Mono:wght@400;500&family=Nunito:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0e0f14;
+  --surface: #16181f;
+  --surface2: #1e2029;
+  --border: #2a2d3a;
+  --text: #e8e9f0;
+  --muted: #7a7d8e;
+  --accent: #6ee7b7;
+  --accent2: #818cf8;
+  --accent3: #fb923c;
+  --accent4: #f472b6;
+  --danger: #f87171;
+  --glow: rgba(110,231,183,0.15);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;font-size:15px;line-height:1.7;min-height:100vh;}
+
+/* ANIMATED BG */
+body::before{
+  content:'';position:fixed;inset:0;
+  background: radial-gradient(ellipse 800px 600px at 20% 0%, rgba(110,231,183,0.04) 0%, transparent 60%),
+              radial-gradient(ellipse 600px 400px at 80% 100%, rgba(129,140,248,0.05) 0%, transparent 60%);
+  pointer-events:none;z-index:0;
+}
+
+/* HEADER */
+header{
+  padding:70px 40px 60px;
+  position:relative;z-index:1;
+  border-bottom:1px solid var(--border);
+  max-width:1100px;margin:0 auto;
+}
+.header-eyebrow{
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(110,231,183,0.1);border:1px solid rgba(110,231,183,0.2);
+  color:var(--accent);font-family:'IBM Plex Mono',monospace;font-size:11px;
+  letter-spacing:1px;text-transform:uppercase;padding:5px 14px;border-radius:20px;
+  margin-bottom:24px;
+}
+.pulse{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.4;transform:scale(0.8);}}
+header h1{
+  font-family:'Playfair Display',serif;
+  font-size:clamp(36px,5vw,64px);font-weight:900;
+  line-height:1.05;margin-bottom:16px;
+}
+header h1 em{font-style:normal;color:var(--accent);}
+header h1 span{color:var(--accent2);}
+header p{color:var(--muted);max-width:580px;font-size:15px;font-weight:400;}
+
+/* TAB NAV */
+.tab-nav{
+  display:flex;gap:4px;padding:20px 40px;
+  max-width:1100px;margin:0 auto;
+  overflow-x:auto;scrollbar-width:none;
+  position:sticky;top:0;z-index:100;
+  background:rgba(14,15,20,0.95);
+  backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+}
+.tab-nav::-webkit-scrollbar{display:none;}
+.tab-btn{
+  display:flex;align-items:center;gap:8px;
+  font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;
+  letter-spacing:0.5px;text-transform:uppercase;
+  padding:10px 18px;border-radius:8px;cursor:pointer;
+  border:1px solid transparent;color:var(--muted);
+  white-space:nowrap;transition:all 0.2s;background:none;
+}
+.tab-btn:hover{color:var(--text);background:var(--surface);}
+.tab-btn.active{background:var(--surface2);border-color:var(--border);color:var(--text);}
+.tab-btn .tab-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+
+/* MAIN */
+main{max-width:1100px;margin:0 auto;padding:50px 40px 100px;position:relative;z-index:1;}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;animation:fadeIn 0.3s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+/* SECTION TITLE */
+.panel-title{margin-bottom:40px;}
+.panel-title h2{font-family:'Playfair Display',serif;font-size:32px;font-weight:700;margin-bottom:8px;}
+.panel-title p{color:var(--muted);font-size:14px;}
+.panel-title .tag{
+  display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:10px;
+  text-transform:uppercase;letter-spacing:1px;padding:3px 10px;border-radius:4px;
+  margin-bottom:12px;
+}
+
+/* GRID */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:28px;}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:28px;}
+@media(max-width:720px){.grid-2,.grid-3{grid-template-columns:1fr;}}
+
+/* CARDS */
+.card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:12px;padding:24px;
+  transition:border-color 0.2s,transform 0.2s;
+}
+.card:hover{border-color:rgba(110,231,183,0.3);transform:translateY(-2px);}
+.card-icon{font-size:24px;margin-bottom:12px;display:block;}
+.card h3{font-size:14px;font-weight:700;margin-bottom:8px;color:var(--text);}
+.card p{font-size:13px;color:var(--muted);line-height:1.6;}
+.card.accent-green{border-left:3px solid var(--accent);}
+.card.accent-purple{border-left:3px solid var(--accent2);}
+.card.accent-orange{border-left:3px solid var(--accent3);}
+.card.accent-pink{border-left:3px solid var(--accent4);}
+
+/* CODE */
+pre, .code{
+  background:#0a0b10;border:1px solid var(--border);
+  border-radius:10px;padding:20px;
+  font-family:'IBM Plex Mono',monospace;font-size:12px;
+  line-height:1.8;overflow-x:auto;margin:16px 0;
+  position:relative;
+}
+.code-header{
+  display:flex;justify-content:space-between;align-items:center;
+  background:#12131a;border:1px solid var(--border);border-bottom:none;
+  border-radius:10px 10px 0 0;padding:10px 16px;
+  font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);
+}
+.code-header+pre{border-radius:0 0 10px 10px;margin-top:0;}
+.copy-btn{
+  background:var(--surface2);border:1px solid var(--border);color:var(--muted);
+  font-family:'IBM Plex Mono',monospace;font-size:10px;padding:4px 10px;
+  border-radius:4px;cursor:pointer;transition:all 0.2s;
+}
+.copy-btn:hover{color:var(--accent);border-color:var(--accent);}
+.k{color:#c084fc;} .s{color:var(--accent);} .c{color:#4b5563;font-style:italic;}
+.n{color:#60a5fa;} .f{color:#fb923c;} .v{color:#f472b6;}
+
+/* WORKFLOW DIAGRAM */
+.workflow{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:12px;padding:28px;margin-bottom:24px;
+}
+.workflow h3{font-size:14px;font-weight:700;margin-bottom:20px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-family:'IBM Plex Mono',monospace;}
+.flow-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:16px;}
+.flow-row:last-child{margin-bottom:0;}
+.fnode{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:8px;padding:10px 14px;font-size:11px;
+  font-family:'IBM Plex Mono',monospace;text-align:center;
+  min-width:100px;cursor:default;transition:all 0.2s;
+}
+.fnode:hover{border-color:var(--accent);color:var(--accent);}
+.fnode .ni{font-size:16px;display:block;margin-bottom:3px;}
+.fnode.trigger{border-color:var(--accent);color:var(--accent);}
+.fnode.output{border-color:var(--accent2);color:var(--accent2);}
+.farrow{color:var(--border);font-size:16px;flex-shrink:0;}
+.flow-label{font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;padding:4px 10px;background:rgba(255,255,255,0.03);border-radius:4px;width:100%;margin-bottom:8px;}
+
+/* PERSONALITY BUILDER */
+.personality-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:24px;}
+.trait-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:10px;padding:16px;cursor:pointer;
+  transition:all 0.2s;user-select:none;
+}
+.trait-card:hover,.trait-card.selected{border-color:var(--accent);background:rgba(110,231,183,0.05);}
+.trait-card.selected .trait-check{opacity:1;}
+.trait-check{opacity:0;color:var(--accent);font-size:12px;float:right;transition:opacity 0.2s;}
+.trait-name{font-size:13px;font-weight:700;margin-bottom:4px;}
+.trait-desc{font-size:11px;color:var(--muted);}
+
+/* PROMPT BUILDER */
+.prompt-output{
+  background:#0a0b10;border:1px solid var(--accent);
+  border-radius:10px;padding:20px;
+  font-family:'IBM Plex Mono',monospace;font-size:12px;
+  line-height:1.8;color:var(--accent);min-height:120px;
+  margin-top:16px;white-space:pre-wrap;
+}
+.btn{
+  display:inline-flex;align-items:center;gap:8px;
+  font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;
+  padding:10px 20px;border-radius:8px;cursor:pointer;
+  border:1px solid;transition:all 0.2s;text-transform:uppercase;letter-spacing:0.5px;
+}
+.btn-accent{background:rgba(110,231,183,0.1);border-color:var(--accent);color:var(--accent);}
+.btn-accent:hover{background:rgba(110,231,183,0.2);}
+.btn-purple{background:rgba(129,140,248,0.1);border-color:var(--accent2);color:var(--accent2);}
+.btn-purple:hover{background:rgba(129,140,248,0.2);}
+
+/* INPUT */
+input,select,textarea{
+  background:var(--surface);border:1px solid var(--border);
+  color:var(--text);font-family:'Nunito',sans-serif;font-size:14px;
+  padding:10px 14px;border-radius:8px;width:100%;
+  outline:none;transition:border-color 0.2s;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);}
+label{font-size:12px;color:var(--muted);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px;margin-top:16px;}
+
+/* DB SCHEMA */
+.schema-table{
+  width:100%;border-collapse:collapse;font-size:13px;
+  font-family:'IBM Plex Mono',monospace;margin-bottom:16px;
+}
+.schema-table th{
+  background:var(--surface2);color:var(--muted);font-size:10px;
+  letter-spacing:1px;text-transform:uppercase;padding:10px 14px;text-align:left;
+}
+.schema-table td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:top;}
+.schema-table tr:last-child td{border-bottom:none;}
+.type-badge{
+  font-size:10px;padding:2px 8px;border-radius:4px;
+  font-family:'IBM Plex Mono',monospace;
+}
+.type-text{background:rgba(96,165,250,0.15);color:#60a5fa;}
+.type-int{background:rgba(110,231,183,0.15);color:var(--accent);}
+.type-ts{background:rgba(251,146,60,0.15);color:#fb923c;}
+.type-bool{background:rgba(244,114,182,0.15);color:#f472b6;}
+.type-json{background:rgba(167,139,250,0.15);color:#a78bfa;}
+.pk{color:var(--accent3);font-size:10px;margin-left:4px;}
+
+/* UX MOCKUP */
+.mockup-frame{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:16px;overflow:hidden;margin-bottom:24px;
+}
+.mockup-bar{
+  background:var(--surface2);padding:12px 16px;
+  display:flex;align-items:center;gap:8px;
+  border-bottom:1px solid var(--border);
+}
+.mock-dot{width:10px;height:10px;border-radius:50%;}
+.mockup-content{padding:24px;}
+.chat-msg{
+  display:flex;gap:12px;margin-bottom:16px;
+  animation:fadeIn 0.3s ease;
+}
+.chat-msg.user{flex-direction:row-reverse;}
+.avatar{
+  width:32px;height:32px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;flex-shrink:0;
+}
+.ai-avatar{background:rgba(110,231,183,0.15);border:1px solid rgba(110,231,183,0.3);}
+.user-avatar{background:rgba(129,140,248,0.15);border:1px solid rgba(129,140,248,0.3);}
+.bubble{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:12px;padding:12px 16px;max-width:75%;font-size:13px;line-height:1.6;
+}
+.chat-msg.user .bubble{background:rgba(129,140,248,0.1);border-color:rgba(129,140,248,0.2);}
+.ai-name{font-size:10px;color:var(--accent);font-family:'IBM Plex Mono',monospace;margin-bottom:4px;}
+.card-preview{
+  background:rgba(110,231,183,0.05);border:1px solid rgba(110,231,183,0.2);
+  border-radius:8px;padding:12px;margin-top:8px;font-size:12px;
+}
+.card-preview .cp-title{font-weight:700;color:var(--accent);margin-bottom:4px;}
+.chat-input-row{
+  display:flex;gap:8px;padding:16px;
+  background:var(--surface2);border-top:1px solid var(--border);
+}
+.chat-input{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--text);}
+.send-btn{background:var(--accent);color:#0e0f14;border:none;border-radius:8px;padding:10px 16px;cursor:pointer;font-weight:700;font-size:13px;}
+
+/* STEPS */
+.steps{display:flex;flex-direction:column;gap:0;}
+.step{display:flex;gap:20px;padding:24px 0;border-bottom:1px solid var(--border);}
+.step:last-child{border-bottom:none;}
+.step-num{
+  width:36px;height:36px;border-radius:50%;
+  background:var(--surface2);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;
+  color:var(--accent);flex-shrink:0;margin-top:2px;
+}
+.step h4{font-size:15px;font-weight:700;margin-bottom:6px;}
+.step p{font-size:13px;color:var(--muted);margin-bottom:8px;}
+.step ul{padding-left:16px;}
+.step li{font-size:13px;color:var(--muted);margin-bottom:3px;}
+
+/* BADGE */
+.badge{display:inline-block;font-size:10px;font-weight:700;font-family:'IBM Plex Mono',monospace;padding:3px 8px;border-radius:4px;letter-spacing:0.5px;text-transform:uppercase;}
+.badge-green{background:rgba(110,231,183,0.15);color:var(--accent);}
+.badge-purple{background:rgba(129,140,248,0.15);color:var(--accent2);}
+.badge-orange{background:rgba(251,146,60,0.15);color:var(--accent3);}
+
+/* ALERT */
+.alert{
+  background:rgba(251,146,60,0.08);border:1px solid rgba(251,146,60,0.25);
+  border-radius:10px;padding:16px 20px;font-size:13px;
+  margin-bottom:20px;display:flex;gap:12px;align-items:flex-start;color:var(--muted);
+}
+.alert strong{color:var(--accent3);}
+
+/* DIVIDER */
+.divider{border:none;border-top:1px solid var(--border);margin:32px 0;}
+
+/* LIVE DEMO */
+.live-demo{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:12px;overflow:hidden;margin-bottom:24px;
+}
+.live-demo-header{
+  padding:14px 20px;background:var(--surface2);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;
+  font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);
+}
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pulse 2s infinite;}
+.live-demo-body{padding:24px;}
+.tone-slider-group{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+@media(max-width:600px){.tone-slider-group{grid-template-columns:1fr;}}
+.slider-row{display:flex;flex-direction:column;gap:6px;}
+.slider-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;}
+input[type=range]{
+  -webkit-appearance:none;width:100%;height:4px;
+  background:var(--border);border-radius:2px;border:none;padding:0;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:14px;height:14px;
+  border-radius:50%;background:var(--accent);cursor:pointer;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-eyebrow"><div class="pulse"></div> Deep Dive — Prototype Ready</div>
+  <h1>Design &amp; Workflow<br><em>Deep Dive</em> for Your<br><span>AI Companion</span></h1>
+  <p>All 4 areas explored in depth — with real scripts, schemas, UI mockups, and a live personality builder you can show right now.</p>
+</header>
+
+<nav class="tab-nav">
+  <button class="tab-btn active" onclick="showTab('workflow',this)">
+    <div class="tab-dot" style="background:#6ee7b7"></div> Workflow Automation
+  </button>
+  <button class="tab-btn" onclick="showTab('ux',this)">
+    <div class="tab-dot" style="background:#818cf8"></div> UI/UX Design
+  </button>
+  <button class="tab-btn" onclick="showTab('personality',this)">
+    <div class="tab-dot" style="background:#fb923c"></div> AI Personality
+  </button>
+  <button class="tab-btn" onclick="showTab('data',this)">
+    <div class="tab-dot" style="background:#f472b6"></div> Data Architecture
+  </button>
+</nav>
+
+<main>
+
+<!-- ══════════ WORKFLOW ══════════ -->
+<div class="tab-panel active" id="tab-workflow">
+  <div class="panel-title">
+    <div class="tag badge badge-green">Area 01</div>
+    <h2>Workflow Automation</h2>
+    <p>How to wire up n8n or Make.com to handle email, calendar, mood, and networking — with real copy-paste scripts.</p>
+  </div>
+
+  <div class="alert"><strong>⚡ Approach:</strong> Build one workflow at a time. Start with Email Triage — it's the most impressive to demo and proves the full loop works.</div>
+
+  <!-- WORKFLOW 1 -->
+  <div class="workflow">
+    <h3>// Workflow 1 — Email Triage + Smart Reply Draft</h3>
+    <div class="flow-label">Trigger: New email arrives in Gmail → runs every 15 min</div>
+    <div class="flow-row">
+      <div class="fnode trigger"><span class="ni">📬</span>Gmail<br>Trigger</div>
+      <div class="farrow">→</div>
+      <div class="fnode"><span class="ni">🔍</span>Filter:<br>Not Spam</div>
+      <div class="farrow">→</div>
+      <div class="fnode"><span class="ni">📦</span>Supabase:<br>Get Context</div>
+      <div class="farrow">→</div>
+      <div class="fnode"><span class="ni">🤖</span>Claude<br>API Call</div>
+      <div class="farrow">→</div>
+      <div class="fnode output"><span class="ni">📤</span>Telegram:<br>Send Brief</div>
+    </div>
+    <div class="flow-label" style="margin-top:16px">Claude prompt structure for this workflow</div>
+  </div>
+
+  <div class="code-header">
+    <span>n8n HTTP Request Node → Claude API · email_triage_prompt.txt</span>
+    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+  </div>
+  <pre><span class="c"># Paste this into the n8n "HTTP Request" node body (JSON)</span>
+{
+  <span class="s">"model"</span>: <span class="s">"claude-haiku-20240307"</span>,
+  <span class="s">"max_tokens"</span>: <span class="n">500</span>,
+  <span class="s">"system"</span>: <span class="s">"You are an email intelligence assistant. Be concise and practical."</span>,
+  <span class="s">"messages"</span>: [{
+    <span class="s">"role"</span>: <span class="s">"user"</span>,
+    <span class="s">"content"</span>: <span class="s">"Analyze this email and return JSON with exactly these fields:
+      priority: urgent/normal/low,
+      summary: one sentence max,
+      action_needed: true/false,
+      suggested_reply: 2-3 sentence draft reply (or null),
+      category: job/networking/personal/finance/newsletter/other
+
+      EMAIL FROM: {{ $json.from }}
+      SUBJECT: {{ $json.subject }}
+      BODY: {{ $json.snippet }}"</span>
+  }]
+}</span></pre>
+
+  <!-- WORKFLOW 2 -->
+  <div class="workflow" style="margin-top:28px;">
+    <h3>// Workflow 2 — Morning Briefing (Scheduled, 7 AM)</h3>
+    <div class="flow-label">Trigger: Cron node at 07:00 every weekday</div>
+    <div class="flow-row">
+      <div class="fnode trigger"><span class="ni">⏰</span>Cron<br>7:00 AM</div>
+      <div class="farrow">→</div>
+      <div class="fnode"><span class="ni">📅</span>Google Cal:<br>Today's Events</div>
+      <div class="farrow">→</div>
+      <div class="fnode"><span class="ni">📧</span>Gmail:<br>Unread Count</div>
+      <div class="farrow">→</div>
+      <div class="fnode"><span class="ni">💾</span>Supabase:<br>Mood + Tasks</div>
+      <div class="farrow">→</div>
+      <div class="fnode"><span class="ni">🤖</span>Claude<br>Brief</div>
+      <div class="farrow">→</div>
+      <div class="fnode output"><span class="ni">📱</span>Telegram<br>Message</div>
+    </div>
+  </div>
+
+  <div class="code-header">
+    <span>morning_brief_prompt.txt · Merge node → Claude</span>
+    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+  </div>
+  <pre><span class="s">"Generate a warm, motivating morning briefing. Keep it under 200 words.
+
+TODAY'S CALENDAR: {{ $json.calendar_events }}
+UNREAD EMAILS: {{ $json.unread_count }} ({{ $json.priority_count }} urgent)
+OPEN TASKS: {{ $json.tasks }}
+MOOD YESTERDAY: {{ $json.last_mood }}
+JOB APPS PENDING FOLLOW-UP: {{ $json.followups }}
+
+Format as:
+🌅 Good morning! [1 warm sentence]
+📅 Today: [bullet list of events]
+📧 Inbox: [summary]
+🎯 Focus: [top 3 things]
+💬 [one encouraging closing line]"</span></pre>
+
+  <!-- WORKFLOW 3 -->
+  <div class="workflow" style="margin-top:28px;">
+    <h3>// Workflow 3 — Networking Follow-up Tracker</h3>
+    <div class="flow-label">Trigger: User sends contact to bot → OR daily check at 9 AM</div>
+    <div class="flow-row">
+      <div class="fnode trigger"><span class="ni">💬</span>New Contact<br>via Chat</div>
+      <div class="farrow">→</div>
+      <div class="fnode"><span class="ni">🤖</span>Claude:<br>Extract Info</div>
+      <div class="farrow">→</div>
+      <div class="fnode"><span class="ni">💾</span>Supabase:<br>INSERT contact</div>
+      <div class="farrow">→</div>
+      <div class="fnode"><span class="ni">⏰</span>Wait<br>5 Days</div>
+      <div class="farrow">→</div>
+      <div class="fnode"><span class="ni">✍️</span>Draft<br>Follow-up</div>
+      <div class="farrow">→</div>
+      <div class="fnode output"><span class="ni">🔔</span>Notify<br>User</div>
+    </div>
+  </div>
+
+  <div class="code-header">
+    <span>networking_extract.json · Parse natural language contact entry</span>
+    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+  </div>
+  <pre><span class="c"># Claude extracts structured data from casual user messages like:
+# "Met Sarah from Google at the AI meetup, she works in product, seemed interested in my portfolio"</span>
+
+{
+  <span class="s">"system"</span>: <span class="s">"Extract contact info as JSON. Return ONLY valid JSON, no text."</span>,
+  <span class="s">"messages"</span>: [{
+    <span class="s">"role"</span>: <span class="s">"user"</span>,
+    <span class="s">"content"</span>: <span class="s">"Extract: name, company, role, context, follow_up_topic, met_at
+      from: '{{ $json.user_message }}'
+      Return null for unknown fields."</span>
+  }]
+}</pre>
+
+  <hr class="divider">
+
+  <div class="grid-3">
+    <div class="card accent-green">
+      <span class="card-icon">🔧</span>
+      <h3>n8n Setup Tips</h3>
+      <p>Use the "Merge" node to combine Gmail + Calendar data before sending to Claude. Always add an "Error" workflow to catch API failures.</p>
+    </div>
+    <div class="card accent-purple">
+      <span class="card-icon">💡</span>
+      <h3>Make.com Alternative</h3>
+      <p>Every n8n workflow above maps 1:1 to Make.com modules. Use "Watch Emails" + HTTP module for Claude. Easier UI, 1K free ops/month.</p>
+    </div>
+    <div class="card accent-orange">
+      <span class="card-icon">⚠️</span>
+      <h3>Rate Limits</h3>
+      <p>Gmail API: 250 quota units/second. Add a "Wait" node (1-2 sec) between batch email calls. Claude Haiku: very generous, rarely hit limits.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ UI/UX ══════════ -->
+<div class="tab-panel" id="tab-ux">
+  <div class="panel-title">
+    <div class="tag badge badge-purple">Area 02</div>
+    <h2>UI/UX Design</h2>
+    <p>Interface patterns, a live chat mockup, and design decisions that make your prototype feel production-ready.</p>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:32px;">
+    <div>
+      <h3 style="font-size:16px;margin-bottom:16px;font-family:'Playfair Display',serif;">Design Principles</h3>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div>
+            <h4>Calm by Default</h4>
+            <p>Your companion touches email, mood, and jobs — all high-anxiety areas. The UI must feel grounding: dark or neutral tones, generous whitespace, no red badges or notification spam.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div>
+            <h4>One Thing at a Time</h4>
+            <p>Never show more than one primary action. The morning brief is one card. The mood check-in is one question. Cognitive load is the enemy.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div>
+            <h4>Personality Visible</h4>
+            <p>Show the AI's name and avatar consistently. Users bond with named characters. The tone of messages should feel like one consistent person, not a chatbot.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div>
+            <h4>Progressive Disclosure</h4>
+            <p>Start with a summary card. Let users tap to expand. Never dump a wall of text. The companion should surface what matters and hide the rest.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <h3 style="font-size:16px;margin-bottom:16px;font-family:'Playfair Display',serif;">4 Interface Options</h3>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div class="card accent-green">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h3>Telegram Bot</h3><span class="badge badge-green">Fastest</span>
+          </div>
+          <p>Best for prototype. No UI to build. Use bot commands (/brief, /mood, /jobs). Users already have Telegram. Works on all devices instantly.</p>
+        </div>
+        <div class="card accent-purple">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h3>Web Chat (React)</h3><span class="badge badge-purple">Best Demo</span>
+          </div>
+          <p>Deployed on Vercel in minutes. Use shadcn/ui chat component. Easiest to customize visually and impress in a demo context.</p>
+        </div>
+        <div class="card accent-orange">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h3>Notion Sidebar</h3><span class="badge badge-orange">Familiar</span>
+          </div>
+          <p>Embed your companion's outputs into a Notion workspace. Morning briefs, job tracker, contacts — all in one place users already use.</p>
+        </div>
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h3>Mobile App</h3><span class="badge">Phase 2</span>
+          </div>
+          <p>React Native via Expo. Build after MVP. Unlocks push notifications, voice input, and home screen presence.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <h3 style="font-size:18px;margin-bottom:16px;font-family:'Playfair Display',serif;">🖥️ Live Chat UI Mockup</h3>
+  <p style="color:var(--muted);font-size:13px;margin-bottom:20px;">This is what your prototype could look like — click the input to try it.</p>
+
+  <div class="mockup-frame">
+    <div class="mockup-bar">
+      <div class="mock-dot" style="background:#f87171;"></div>
+      <div class="mock-dot" style="background:#fbbf24;"></div>
+      <div class="mock-dot" style="background:#34d399;"></div>
+      <span style="margin-left:8px;">✦ Aria — Your AI Companion</span>
+      <span style="margin-left:auto;color:var(--accent);font-size:10px;">● online</span>
+    </div>
+    <div class="mockup-content" id="chat-window" style="min-height:280px;max-height:400px;overflow-y:auto;">
+      <div class="chat-msg">
+        <div class="avatar ai-avatar">✦</div>
+        <div>
+          <div class="ai-name">ARIA</div>
+          <div class="bubble">
+            Good morning! ☀️ Here's your day at a glance.
+            <div class="card-preview">
+              <div class="cp-title">📅 Today's Brief</div>
+              <div>• 2 meetings (10 AM standup, 2 PM interview prep)</div>
+              <div>• 7 unread emails — 1 urgent (recruiter from Stripe)</div>
+              <div>• Follow up with Marcus from last Thursday's event</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="chat-msg user">
+        <div class="avatar user-avatar">👤</div>
+        <div class="bubble">Draft a reply to the Stripe recruiter</div>
+      </div>
+      <div class="chat-msg">
+        <div class="avatar ai-avatar">✦</div>
+        <div>
+          <div class="ai-name">ARIA</div>
+          <div class="bubble">
+            Here's a draft — I kept it warm but professional:
+            <div class="card-preview">
+              <div class="cp-title">✉️ Draft Reply</div>
+              <div style="margin-top:4px;line-height:1.6;">Hi [Name], thank you for reaching out! I'm genuinely excited about the opportunity at Stripe. I'd love to schedule a call — I'm available Tuesday or Wednesday afternoon. Looking forward to connecting!</div>
+            </div>
+            Want me to adjust the tone or send it?
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="chat-input-row">
+      <input class="chat-input" type="text" placeholder="Ask Aria anything..." id="demo-input" onkeydown="if(event.key==='Enter')sendDemo()">
+      <button class="send-btn" onclick="sendDemo()">→</button>
+    </div>
+  </div>
+
+  <h3 style="font-size:16px;margin:28px 0 16px;font-family:'Playfair Display',serif;">Screen Flow for Prototype Demo</h3>
+  <div class="grid-3">
+    <div class="card accent-green">
+      <span class="card-icon">1️⃣</span>
+      <h3>Home / Dashboard</h3>
+      <p>Morning brief card at top. Mood ring (color-coded). Quick-action buttons: Email, Calendar, Jobs, Chat.</p>
+    </div>
+    <div class="card accent-purple">
+      <span class="card-icon">2️⃣</span>
+      <h3>Chat Interface</h3>
+      <p>Full-screen conversation with Aria. Cards for structured outputs (emails, events). Always-visible input bar.</p>
+    </div>
+    <div class="card accent-orange">
+      <span class="card-icon">3️⃣</span>
+      <h3>Job Tracker View</h3>
+      <p>Kanban-style pipeline: Applied → Interviewing → Offer → Rejected. Aria nudges per column automatically.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ PERSONALITY ══════════ -->
+<div class="tab-panel" id="tab-personality">
+  <div class="panel-title">
+    <div class="tag badge badge-orange">Area 03</div>
+    <h2>AI Personality &amp; Conversation Design</h2>
+    <p>Design your companion's voice, emotional style, and conversation flows — then generate a real system prompt below.</p>
+  </div>
+
+  <div class="live-demo">
+    <div class="live-demo-header">
+      <div class="live-dot"></div>
+      INTERACTIVE PERSONALITY BUILDER — generates a real system prompt
+    </div>
+    <div class="live-demo-body">
+      <label>Companion Name</label>
+      <input type="text" id="p-name" value="Aria" oninput="buildPrompt()">
+
+      <label>Primary Role Focus</label>
+      <select id="p-role" onchange="buildPrompt()">
+        <option value="all-rounder">All-rounder (email + calendar + mood + jobs)</option>
+        <option value="job-focus">Job Search Specialist</option>
+        <option value="wellness-focus">Wellbeing & Productivity Focus</option>
+        <option value="exec-assistant">Executive Assistant Style</option>
+      </select>
+
+      <label>Personality Traits (click to select)</label>
+      <div class="personality-grid" id="trait-grid">
+        <div class="trait-card" onclick="toggleTrait(this,'warm and encouraging')">
+          <span class="trait-check">✓</span>
+          <div class="trait-name">Warm & Encouraging</div>
+          <div class="trait-desc">Celebrates wins, uses positive framing</div>
+        </div>
+        <div class="trait-card" onclick="toggleTrait(this,'direct and concise')">
+          <span class="trait-check">✓</span>
+          <div class="trait-name">Direct & Concise</div>
+          <div class="trait-desc">No filler, gets to the point fast</div>
+        </div>
+        <div class="trait-card" onclick="toggleTrait(this,'gentle and empathetic')">
+          <span class="trait-check">✓</span>
+          <div class="trait-name">Gentle & Empathetic</div>
+          <div class="trait-desc">Validates feelings before advising</div>
+        </div>
+        <div class="trait-card" onclick="toggleTrait(this,'professional and polished')">
+          <span class="trait-check">✓</span>
+          <div class="trait-name">Professional & Polished</div>
+          <div class="trait-desc">Always appropriate, no slang</div>
+        </div>
+        <div class="trait-card" onclick="toggleTrait(this,'playful with light humor')">
+          <span class="trait-check">✓</span>
+          <div class="trait-name">Playful & Light</div>
+          <div class="trait-desc">Uses gentle humor to ease stress</div>
+        </div>
+        <div class="trait-card" onclick="toggleTrait(this,'proactive and anticipatory')">
+          <span class="trait-check">✓</span>
+          <div class="trait-name">Proactive</div>
+          <div class="trait-desc">Surfaces things before user asks</div>
+        </div>
+      </div>
+
+      <label>Tone Sliders</label>
+      <div class="tone-slider-group">
+        <div class="slider-row">
+          <div class="slider-labels"><span>Formal</span><span>Casual</span></div>
+          <input type="range" min="1" max="5" value="3" id="s-formal" oninput="buildPrompt()">
+        </div>
+        <div class="slider-row">
+          <div class="slider-labels"><span>Brief</span><span>Detailed</span></div>
+          <input type="range" min="1" max="5" value="2" id="s-detail" oninput="buildPrompt()">
+        </div>
+        <div class="slider-row">
+          <div class="slider-labels"><span>Reactive</span><span>Proactive</span></div>
+          <input type="range" min="1" max="5" value="4" id="s-proactive" oninput="buildPrompt()">
+        </div>
+        <div class="slider-row">
+          <div class="slider-labels"><span>Reserved</span><span>Expressive</span></div>
+          <input type="range" min="1" max="5" value="3" id="s-expressive" oninput="buildPrompt()">
+        </div>
+      </div>
+
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;">
+        <button class="btn btn-accent" onclick="buildPrompt()">⚡ Generate System Prompt</button>
+        <button class="btn btn-purple" onclick="copyPrompt()">Copy Prompt</button>
+      </div>
+
+      <div class="prompt-output" id="prompt-output">← Adjust the settings above and click Generate to build your system prompt.</div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <h3 style="font-size:18px;margin-bottom:20px;font-family:'Playfair Display',serif;">Conversation Design Patterns</h3>
+
+  <div class="grid-2">
+    <div class="card accent-green">
+      <h3>✅ Do: Structured Outputs</h3>
+      <p>When reporting email or calendar data, always use structured cards (icons, bold labels, bullet points). Never dump raw text. Structure = readable at a glance.</p>
+    </div>
+    <div class="card" style="border-left:3px solid var(--danger);">
+      <h3>❌ Don't: Open-Ended Check-ins</h3>
+      <p>Don't ask "How are you feeling?" — ask "On a scale of 1–5, how's your energy today?" Specific prompts get useful data and feel less awkward.</p>
+    </div>
+    <div class="card accent-purple">
+      <h3>✅ Do: Confirm Before Acting</h3>
+      <p>Before sending an email or creating a calendar event, always show the draft and ask "Looks good to send?" This builds trust and prevents errors.</p>
+    </div>
+    <div class="card" style="border-left:3px solid var(--danger);">
+      <h3>❌ Don't: Be Preachy</h3>
+      <p>If the user is stressed, don't say "You should practice self-care." Say "That sounds like a lot. Want me to clear your afternoon?" Action, not advice.</p>
+    </div>
+  </div>
+
+  <div class="code-header" style="margin-top:24px;">
+    <span>mood_checkin_flow.txt · Conversation script for daily mood</span>
+    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+  </div>
+  <pre><span class="c"># MOOD CHECK-IN CONVERSATION FLOW
+# Triggered daily at 8 PM or on-demand</span>
+
+<span class="k">SYSTEM:</span> <span class="s">"Run a brief, natural mood check-in. Never clinical. 
+Max 3 exchanges. Collect: energy (1-5), highlight, challenge.
+If score ≤ 2, offer one concrete help action. 
+Store results via Supabase API call at end."</span>
+
+<span class="k">TURN 1 (AI):</span>
+<span class="s">"Hey! Quick check-in — how's your energy today? 
+[1 = running on fumes, 5 = in the zone]"</span>
+
+<span class="k">TURN 2 (AI, after response):</span>
+<span class="s">"Got it. What was one thing that went well today, 
+even something small?"</span>
+
+<span class="k">TURN 3 (AI, after response):</span>
+<span class="s">"And anything weighing on you I should keep in mind 
+for tomorrow's planning?"</span>
+
+<span class="k">CLOSE (if score ≤ 2):</span>
+<span class="s">"Sounds like a tough one. Want me to block some 
+recovery time tomorrow morning? I can also push 
+non-urgent tasks to later in the week."</span></pre>
+</div>
+
+<!-- ══════════ DATA ══════════ -->
+<div class="tab-panel" id="tab-data">
+  <div class="panel-title">
+    <div class="tag badge" style="background:rgba(244,114,182,0.15);color:#f472b6;">Area 04</div>
+    <h2>Data Architecture &amp; Memory Design</h2>
+    <p>The full Supabase schema, memory injection pattern, and SQL you can copy directly into your database.</p>
+  </div>
+
+  <div class="alert"><strong>Key concept:</strong> Your AI has no memory between calls. You solve this by fetching relevant context from Supabase before every Claude API call and injecting it into the prompt. This is called "context injection."</div>
+
+  <h3 style="font-size:18px;margin-bottom:20px;font-family:'Playfair Display',serif;">Database Schema — Copy into Supabase SQL Editor</h3>
+
+  <!-- CONTACTS TABLE -->
+  <div style="margin-bottom:8px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Table: contacts</div>
+  <table class="schema-table" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:24px;">
+    <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>id <span class="pk">PK</span></td><td><span class="type-badge type-int">uuid</span></td><td>gen_random_uuid()</td></tr>
+      <tr><td>name</td><td><span class="type-badge type-text">text</span></td><td>Full name</td></tr>
+      <tr><td>company</td><td><span class="type-badge type-text">text</span></td><td>nullable</td></tr>
+      <tr><td>role</td><td><span class="type-badge type-text">text</span></td><td>nullable</td></tr>
+      <tr><td>context</td><td><span class="type-badge type-text">text</span></td><td>How/where you met</td></tr>
+      <tr><td>follow_up_date</td><td><span class="type-badge type-ts">timestamptz</span></td><td>Trigger date for nudge</td></tr>
+      <tr><td>status</td><td><span class="type-badge type-text">text</span></td><td>new/followed_up/warm/cold</td></tr>
+      <tr><td>tags</td><td><span class="type-badge type-json">jsonb</span></td><td>["recruiter","ai","startup"]</td></tr>
+      <tr><td>created_at</td><td><span class="type-badge type-ts">timestamptz</span></td><td>now()</td></tr>
+    </tbody>
+  </table>
+
+  <!-- MOOD TABLE -->
+  <div style="margin-bottom:8px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Table: mood_logs</div>
+  <table class="schema-table" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:24px;">
+    <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>id <span class="pk">PK</span></td><td><span class="type-badge type-int">uuid</span></td><td>gen_random_uuid()</td></tr>
+      <tr><td>energy_score</td><td><span class="type-badge type-int">int2</span></td><td>1–5 scale</td></tr>
+      <tr><td>highlight</td><td><span class="type-badge type-text">text</span></td><td>Best thing today</td></tr>
+      <tr><td>challenge</td><td><span class="type-badge type-text">text</span></td><td>Pain point today</td></tr>
+      <tr><td>ai_response</td><td><span class="type-badge type-text">text</span></td><td>What Aria said back</td></tr>
+      <tr><td>logged_at</td><td><span class="type-badge type-ts">timestamptz</span></td><td>now()</td></tr>
+    </tbody>
+  </table>
+
+  <!-- JOBS TABLE -->
+  <div style="margin-bottom:8px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Table: job_applications</div>
+  <table class="schema-table" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:24px;">
+    <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>id <span class="pk">PK</span></td><td><span class="type-badge type-int">uuid</span></td><td>gen_random_uuid()</td></tr>
+      <tr><td>company</td><td><span class="type-badge type-text">text</span></td><td>Company name</td></tr>
+      <tr><td>role</td><td><span class="type-badge type-text">text</span></td><td>Job title</td></tr>
+      <tr><td>stage</td><td><span class="type-badge type-text">text</span></td><td>applied/screening/interview/offer/rejected</td></tr>
+      <tr><td>applied_date</td><td><span class="type-badge type-ts">timestamptz</span></td><td>Application date</td></tr>
+      <tr><td>last_contact</td><td><span class="type-badge type-ts">timestamptz</span></td><td>Last interaction date</td></tr>
+      <tr><td>notes</td><td><span class="type-badge type-text">text</span></td><td>Free-form notes</td></tr>
+      <tr><td>auto_followup</td><td><span class="type-badge type-bool">bool</span></td><td>Enable AI follow-up drafts</td></tr>
+      <tr><td>contact_name</td><td><span class="type-badge type-text">text</span></td><td>Recruiter/hiring manager</td></tr>
+    </tbody>
+  </table>
+
+  <hr class="divider">
+
+  <h3 style="font-size:18px;margin-bottom:16px;font-family:'Playfair Display',serif;">Memory Injection Pattern</h3>
+  <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">This is the core pattern that gives Claude "memory." Run this before every important API call.</p>
+
+  <div class="code-header">
+    <span>memory_inject.js · Node.js — runs in n8n Code node</span>
+    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+  </div>
+  <pre><span class="c">// Fetch user context from Supabase before calling Claude</span>
+<span class="c">// Paste this into an n8n "Code" node before your Claude HTTP node</span>
+
+<span class="k">const</span> <span class="v">SUPABASE_URL</span> = <span class="s">'https://your-project.supabase.co'</span>;
+<span class="k">const</span> <span class="v">SUPABASE_KEY</span> = <span class="s">'{{ $env.SUPABASE_ANON_KEY }}'</span>;
+
+<span class="c">// Fetch recent mood (last 3 days)</span>
+<span class="k">const</span> <span class="v">moodRes</span> = <span class="k">await</span> <span class="f">fetch</span>(
+  <span class="s">`${SUPABASE_URL}/rest/v1/mood_logs?select=*&order=logged_at.desc&limit=3`</span>,
+  { headers: { <span class="s">'apikey'</span>: SUPABASE_KEY, <span class="s">'Authorization'</span>: <span class="s">`Bearer ${SUPABASE_KEY}`</span> } }
+);
+<span class="k">const</span> <span class="v">moods</span> = <span class="k">await</span> moodRes.<span class="f">json</span>();
+
+<span class="c">// Fetch pending follow-ups</span>
+<span class="k">const</span> <span class="v">followupRes</span> = <span class="k">await</span> <span class="f">fetch</span>(
+  <span class="s">`${SUPABASE_URL}/rest/v1/contacts?status=eq.new&follow_up_date=lte.${new Date().toISOString()}`</span>,
+  { headers: { <span class="s">'apikey'</span>: SUPABASE_KEY, <span class="s">'Authorization'</span>: <span class="s">`Bearer ${SUPABASE_KEY}`</span> } }
+);
+<span class="k">const</span> <span class="v">followups</span> = <span class="k">await</span> followupRes.<span class="f">json</span>();
+
+<span class="c">// Build context string to inject into Claude prompt</span>
+<span class="k">const</span> <span class="v">context</span> = <span class="s">`
+RECENT MOOD: ${moods.map(m => `Day: energy ${m.energy_score}/5`).join(', ')}
+PENDING FOLLOW-UPS: ${followups.map(f => f.name).join(', ') || 'None'}
+`</span>;
+
+<span class="k">return</span> [{ json: { context } }];</pre>
+
+  <hr class="divider">
+
+  <div class="grid-2">
+    <div class="card accent-pink">
+      <span class="card-icon">🧠</span>
+      <h3>What to Store vs. What to Discard</h3>
+      <p><strong style="color:var(--accent);">Store:</strong> mood scores, contact names, job stages, event titles, user preferences.<br><strong style="color:var(--danger);">Discard:</strong> full email bodies (use summaries only), raw calendar descriptions, anything not needed after 90 days.</p>
+    </div>
+    <div class="card accent-purple">
+      <span class="card-icon">📊</span>
+      <h3>Useful Supabase Queries</h3>
+      <p>Average mood this week: <code style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--accent);">SELECT AVG(energy_score) FROM mood_logs WHERE logged_at > now() - interval '7 days'</code><br><br>Jobs with no activity in 7+ days: add a WHERE clause on last_contact.</p>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<script>
+// Tab switching
+function showTab(id, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  btn.classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// Copy code
+function copyCode(btn) {
+  const pre = btn.closest('.code-header').nextElementSibling;
+  navigator.clipboard.writeText(pre.innerText);
+  btn.textContent = 'Copied!';
+  setTimeout(() => btn.textContent = 'Copy', 2000);
+}
+
+// Trait toggle
+const selectedTraits = new Set();
+function toggleTrait(el, trait) {
+  el.classList.toggle('selected');
+  if (selectedTraits.has(trait)) selectedTraits.delete(trait);
+  else selectedTraits.add(trait);
+  buildPrompt();
+}
+
+// Prompt builder
+function buildPrompt() {
+  const name = document.getElementById('p-name').value || 'Aria';
+  const role = document.getElementById('p-role').value;
+  const formal = parseInt(document.getElementById('s-formal').value);
+  const detail = parseInt(document.getElementById('s-detail').value);
+  const proactive = parseInt(document.getElementById('s-proactive').value);
+  const expressive = parseInt(document.getElementById('s-expressive').value);
+
+  const traits = selectedTraits.size > 0 ? [...selectedTraits].join(', ') : 'warm, helpful, and concise';
+
+  const formalDesc = formal <= 2 ? 'formal and professional' : formal >= 4 ? 'conversational and friendly' : 'balanced between formal and casual';
+  const detailDesc = detail <= 2 ? 'brief — under 100 words unless asked' : detail >= 4 ? 'thorough with context and reasoning' : 'moderately detailed';
+  const proactiveDesc = proactive >= 4 ? 'Always proactively surface relevant info the user might not have asked for.' : proactive <= 2 ? 'Respond to what the user asks — do not volunteer extra info.' : 'Sometimes surface useful context when clearly relevant.';
+  const expressiveDesc = expressive >= 4 ? 'Use light emoji and expressive language to convey warmth.' : expressive <= 2 ? 'Keep language neutral and reserved. No emoji.' : 'Use emoji sparingly for clarity.';
+
+  const roleMap = {
+    'all-rounder': 'You handle: email triage + drafting, calendar management, daily mood check-ins, job application tracking, and networking follow-ups.',
+    'job-focus': 'Your primary focus is job search support: tracking applications, drafting outreach and follow-ups, prep for interviews, and networking strategy.',
+    'wellness-focus': 'Your primary focus is wellbeing and productivity: daily mood check-ins, energy management, habit nudges, and mindful scheduling.',
+    'exec-assistant': 'You operate as a high-efficiency executive assistant: ruthless prioritization, crisp briefings, calendar optimization, and proactive problem detection.'
+  };
+
+  const prompt = `You are ${name}, a personal AI companion.
+
+ROLE: ${roleMap[role]}
+
+PERSONALITY: You are ${traits}.
+
+TONE: ${formalDesc}, ${detailDesc}.
+
+BEHAVIOR RULES:
+• ${proactiveDesc}
+• ${expressiveDesc}
+• Always ask one clarifying question at a time — never overwhelm.
+• Before taking any action (sending email, creating events), show a preview and confirm.
+• When the user seems stressed, offer concrete help first — not advice.
+• Never be preachy, judgmental, or repeat the same suggestion twice.
+
+MEMORY CONTEXT (injected per call):
+{mood_recent} {followups_pending} {jobs_active} {user_preferences}
+
+OUTPUT FORMAT:
+• Use structured cards with emoji headers for briefings.
+• Use plain prose for emotional/mood conversations.
+• Keep all responses under 200 words unless the user asks for more.`;
+
+  document.getElementById('prompt-output').textContent = prompt;
+}
+
+function copyPrompt() {
+  const text = document.getElementById('prompt-output').textContent;
+  navigator.clipboard.writeText(text);
+  const btn = document.querySelector('.btn-purple');
+  btn.textContent = '✓ Copied!';
+  setTimeout(() => btn.textContent = 'Copy Prompt', 2000);
+}
+
+// Demo chat
+const demoReplies = [
+  "I'll take care of that! Want me to add a 30-minute prep block before the interview too?",
+  "Done ✓ I've noted that in your contacts. I'll remind you to follow up in 5 days.",
+  "Your energy has been averaging 3.2/5 this week — a bit lower than last week's 3.8. Anything I can shift around to help?",
+  "I found 3 emails that might need replies today. The most urgent is from a recruiter at Notion — want me to draft a response?",
+  "Great idea! I'll block that time on your calendar and set a focus reminder. Is 2 hours enough?",
+  "Noted 📝 I'll keep that in mind for your morning briefings this week."
+];
+let replyIdx = 0;
+function sendDemo() {
+  const input = document.getElementById('demo-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+  const win = document.getElementById('chat-window');
+  win.innerHTML += `<div class="chat-msg user"><div class="avatar user-avatar">👤</div><div class="bubble">${msg}</div></div>`;
+  input.value = '';
+  setTimeout(() => {
+    win.innerHTML += `<div class="chat-msg"><div class="avatar ai-avatar">✦</div><div><div class="ai-name">ARIA</div><div class="bubble">${demoReplies[replyIdx % demoReplies.length]}</div></div></div>`;
+    replyIdx++;
+    win.scrollTop = win.scrollHeight;
+  }, 700);
+  win.scrollTop = win.scrollHeight;
+}
+
+// Init
+buildPrompt();
+</script>
+</body>
+</html>

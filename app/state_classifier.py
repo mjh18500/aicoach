@@ -1,8 +1,8 @@
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
 
-from axes import compute_axis_scores
-from timeline import build_unified_timeline
+from .axes import compute_axis_scores
+from .timeline import build_unified_timeline
 
 
 def _parse_ts(ts: str) -> datetime:
@@ -92,7 +92,7 @@ if __name__ == "__main__":
     # Quick smoke test when run directly
     try:
         import json
-        from data_loader import load_persona
+        from .data_loader import load_persona
 
         persona = load_persona("p05")
         out = classify_state(persona)

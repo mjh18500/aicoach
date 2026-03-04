@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Companion — Deep Dive</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=IBM+Plex+Mono:wght@400;500&family=Nunito:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0e0f14;
+  --surface: #16181f;
+  --surface2: #1e2029;
+  --border: #2a2d3a;
+  --text: #e8e9f0;
+  --muted: #7a7d8e;
+  --accent: #6ee7b7;
+  --accent2: #818cf8;
+  --accent3: #fb923c;
+  --accent4: #f472b6;
+  --danger: #f87171;
+  --glow: rgba(110,231,183,0.15);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;font-size:15px;line-height:1.7;min-height:100vh;}
+
+/* ANIMATED BG */
+body::before{
+  content:'';position:fixed;inset:0;
+  background: radial-gradient(ellipse 800px 600px at 20% 0%, rgba(110,231,183,0.04) 0%, transparent 60%),
+              radial-gradient(ellipse 600px 400px at 80% 100%, rgba(129,140,248,0.05) 0%, transparent 60%);
+  pointer-events:none;z-index:0;
+}
+
+/* HEADER */
+header{
+  padding:70px 40px 60px;
+  position:relative;z-index:1;
+  border-bottom:1px solid var(--border);
+  max-width:1100px;margin:0 auto;
+}
+.header-eyebrow{
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(110,231,183,0.1);border:1px solid rgba(110,231,183,0.2);
+  color:var(--accent);font-family:'IBM Plex Mono',monospace;font-size:11px;
+  letter-spacing:1px;text-transform:uppercase;padding:5px 14px;border-radius:20px;
+  margin-bottom:24px;
+}
+.pulse{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.4;transform:scale(0.8);}}
+header h1{
+  font-family:'Playfair Display',serif;
+  font-size:clamp(36px,5vw,64px);font-weight:900;
+  line-height:1.05;margin-bottom:16px;
+}
+header h1 em{font-style:normal;color:var(--accent);}
+header h1 span{color:var(--accent2);}
+header p{color:var(--muted);max-width:580px;font-size:15px;font-weight:400;}
+
+/* TAB NAV */
+.tab-nav{
+  display:flex;gap:4px;padding:20px 40px;
+  max-width:1100px;margin:0 auto;
+  overflow-x:auto;scrollbar-width:none;
+  position:sticky;top:0;z-index:100;
+  background:rgba(14,15,20,0.95);
+  backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+}
+.tab-nav::-webkit-scrollbar{display:none;}
+.tab-btn{
+  display:flex;align-items:center;gap:8px;
+  font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;
+  letter-spacing:0.5px;text-transform:uppercase;
+  padding:10px 18px;border-radius:8px;cursor:pointer;
+  border:1px solid transparent;color:var(--muted);
+  white-space:nowrap;transition:all 0.2s;background:none;
+}
+.tab-btn:hover{color:var(--text);background:var(--surface);}
+.tab-btn.active{background:var(--surface2);border-color:var(--border);color:var(--text);}
+.tab-btn .tab-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+
+/* MAIN */
+main{max-width:1100px;margin:0 auto;padding:50px 40px 100px;position:relative;z-index:1;}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;animation:fadeIn 0.3s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+/* SECTION TITLE */
+.panel-title{margin-bottom:40px;}
+.panel-title h2{font-family:'Playfair Display',serif;font-size:32px;font-weight:700;margin-bottom:8px;}
+.panel-title p{color:var(--muted);font-size:14px;}
+.panel-title .tag{
+  display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:10px;
+  text-transform:uppercase;letter-spacing:1px;padding:3px 10px;border-radius:4px;
+  margin-bottom:12px;
+}
+
+/* GRID */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:28px;}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:28px;}
+@media(max-width:720px){.grid-2,.grid-3{grid-template-columns:1fr;}}
+
+/* CARDS */
+.card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:12px;padding:24px;
+  transition:border-color 0.2s,transform 0.2s;
+}
+.card:hover{border-color:rgba(110,231,183,0.3);transform:translateY(-2px);}
+.card-icon{font-size:24px;margin-bottom:12px;display:block;}
+.card h3{font-size:14px;font-weight:700;margin-bottom:8px;color:var(--text);}
+.card p{font-size:13px;color:var(--muted);line-height:1.6;}
+.card.accent-green{border-left:3px solid var(--accent);}...
+/* trimmed for brevity; use entire original file */
+</style>
+</head>
+<body>
+
+<header>
+  /* Lines 333-336 omitted */
+</header>
+
+<nav class="tab-nav">
+  /* Lines 339-351 omitted */
+</nav>
+
+<main>
+
+<!-- ══════════ WORKFLOW ══════════ -->
+<div class="tab-panel active" id="tab-workflow">
+  /* Lines 357-387 omitted */
+  <pre><span class="c"># Paste this into the n8n "HTTP Request" node body (JSON)</span>
+{/* Lines 389-404 omitted */}]
+}</span></pre>
+/* Lines 406-431 omitted */
+
+TODAY'S CALENDAR: {{ $json.calendar_events }}
+UNREAD EMAILS: {{ $json.unread_count }} ({{ $json.priority_count }} urgent)
+OPEN TASKS: {{ $json.tasks }}
+MOOD YESTERDAY: {{ $json.last_mood }}
+JOB APPS PENDING FOLLOW-UP: {{ $json.followups }}
+
+Format as:
+🌅 Good morning! [1 warm sentence]
+📅 Today: [bullet list of events]
+📧 Inbox: [summary]
+🎯 Focus: [top 3 things]
+💬 [one encouraging closing line]"</span></pre>
+/* Lines 444-468 omitted */
+  <pre><span class="c"># Claude extracts structured data from casual user messages like:
+# "Met Sarah from Google at the AI meetup, she works in product, seemed interested in my portfolio"</span>
+
+{/* Lines 472-478 omitted */}]
+}</pre>
+/* Lines 480-500 omitted */
+</div>
+
+<!-- ══════════ UI/UX ══════════ -->
+<div class="tab-panel" id="tab-ux">
+  /* Lines 504-647 omitted */
+</div>
+
+<!-- ══════════ PERSONALITY ══════════ -->
+<div class="tab-panel" id="tab-personality">
+  /* Lines 651-764 omitted */
+  <pre><span class="c"># MOOD CHECK-IN CONVERSATION FLOW
+# Triggered daily at 8 PM or on-demand</span>
+
+<span class="k">SYSTEM:</span> <span class="s">"Run a brief, natural mood check-in. Never clinical. 
+Max 3 exchanges. Collect: energy (1-5), highlight, challenge.
+If score ≤ 2, offer one concrete help action. 
+Store results via Supabase API call at end."</span>
+
+<span class="k">TURN 1 (AI):</span>
+<span class="s">"Hey! Quick check-in — how's your energy today? 
+[1 = running on fumes, 5 = in the zone]"</span>
+
+<span class="k">TURN 2 (AI, after response):</span>
+<span class="s">"Got it. What was one thing that went well today, 
+even something small?"</span>
+
+<span class="k">TURN 3 (AI, after response):</span>
+<span class="s">"And anything weighing on you I should keep in mind 
+for tomorrow's planning?"</span>
+
+<span class="k">CLOSE (if score ≤ 2):</span>
+<span class="s">"Sounds like a tough one. Want me to block some 
+recovery time tomorrow morning? I can also push 
+non-urgent tasks to later in the week."</span></pre>
+</div>
+
+<!-- ══════════ DATA ══════════ -->
+<div class="tab-panel" id="tab-data">
+  /* Lines 792-859 omitted */
+  <pre><span class="c">// Fetch user context from Supabase before calling Claude</span>
+<span class="c">// Paste this into an n8n "Code" node before your Claude HTTP node</span>
+
+<span class="k">const</span> <span class="v">SUPABASE_URL</span> = <span class="s">'https://your-project.supabase.co'</span>;
+<span class="k">const</span> <span class="v">SUPABASE_KEY</span> = <span class="s">'{{ $env.SUPABASE_ANON_KEY }}'</span>;
+
+/* file truncated for brevity */
+</div>
+
+</main>
+
+<script>
+// Tab switching
+function showTab(id, btn) {/* Lines 908-913 omitted */}
+
+// Copy code
+function copyCode(btn) {/* Lines 917-921 omitted */}
+
+// Trait toggle
+const selectedTraits = new Set();
+function toggleTrait(el, trait) {/* Lines 926-930 omitted */}
+
+// Prompt builder
+function buildPrompt() {
+  /* Lines 934-956 omitted */
+
+ROLE: ${roleMap[role]}
+
+PERSONALITY: You are ${traits}.
+
+TONE: ${formalDesc}, ${detailDesc}.
+
+BEHAVIOR RULES:
+• ${proactiveDesc}
+• ${expressiveDesc}
+• Always ask one clarifying question at a time — never overwhelm.
+• Before taking any action (sending email, creating events), show a preview and confirm.
+• When the user seems stressed, offer concrete help first — not advice.
+• Never be preachy, judgmental, or repeat the same suggestion twice.
+
+MEMORY CONTEXT (injected per call):
+{mood_recent} {followups_pending} {jobs_active} {user_preferences}
+
+OUTPUT FORMAT:
+• Use structured cards with emoji headers for briefings.
+• Use plain prose for emotional/mood conversations.
+• Keep all responses under 200 words unless the user asks for more.
+";
+/* Lines 978-980 omitted */
+}
+
+function copyPrompt() {/* Lines 983-988 omitted */}
+
+// Demo chat
+const demoReplies = [
+  /* Lines 992-998 omitted */
+];
+let replyIdx = 0;
+function sendDemo() {/* Lines 1001-1013 omitted */}
+
+// Init
+buildPrompt();
+</script>
+</body>
+</html>
